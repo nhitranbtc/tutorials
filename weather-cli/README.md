@@ -8,10 +8,18 @@ Implement a cli tool for getting weather in any city.
 ```
 make weather CITY={{city}}
 ```
+
+
 ##### Example
 
 ```
 make weather CITY=Aberdeen
+```
+
+# Unit Test
+```
+make test
+
 ```
 
 # Output 

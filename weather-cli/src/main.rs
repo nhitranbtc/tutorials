@@ -6,6 +6,9 @@ use prettytable::{row, Table};
 use serde::Deserialize;
 use std::error::Error;
 
+#[cfg(test)]
+pub mod test;
+
 #[derive(Deserialize, Debug)]
 struct Coord {
     lon: f64,
@@ -52,6 +55,21 @@ struct CurrentWeather {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() != 2 {
+        println!("Usage: weather <CITY>");
+        return Ok(());
+    }
+    let city = &args[1];
+
+    let weather: CurrentWeather = fetch_weather(city)?;
+    // println!("weather = {weather:?}");
+    forecast(&weather);
+
+    Ok(())
+}
+
+fn fetch_weather(city: &str) -> Result<CurrentWeather, reqwest::Error> {
     dotenv::dotenv().unwrap();
     let mut api_key: Option<String> = None;
     for (key, value) in std::env::vars() {
@@ -64,19 +82,15 @@ fn main() -> Result<(), Box<dyn Error>> {
         panic!("APIKEY is not available")
     }
     let api_key: String = api_key.unwrap();
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() != 2 {
-        println!("Usage: weather <CITY>");
-        return Ok(());
-    }
-    let city = &args[1];
-
     let url = format!(
         "http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
     );
     let weather: CurrentWeather = reqwest::blocking::get(url)?.json()?;
-    // println!("weather = {weather:?}");
 
+    Ok(weather)
+}
+
+fn forecast(weather: &CurrentWeather) {
     let mut table = Table::new();
     table.add_row(row![bFw->"Weather in ", weather.name]);
     table.add_row(row![bFw->"City ID ", weather.id]);
@@ -92,7 +106,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     table.add_row(row!["Temperature (°C)", weather.main.temp]);
     table.add_row(row!["Feels Like (°C)", weather.main.feels_like]);
     table.add_row(row!["Wind Speed (m/s)", weather.wind.speed]);
-    if let Some(rain) = weather.rain {
+    if let Some(rain) = &weather.rain {
         table.add_row(row![
             "Rain (last 1h)",
             format!("{:.1} mm", rain.volumn_1h.unwrap_or(0.0))
@@ -100,7 +114,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     } else {
         table.add_row(row!["Rain (last 3h", "None"]);
     }
-    if let Some(snow) = weather.snow {
+    if let Some(snow) = &weather.snow {
         table.add_row(row![
             "Snow (last 1h)",
             format!("{:.1} mm", snow.volumn_1h.unwrap_or(0.0))
@@ -109,7 +123,5 @@ fn main() -> Result<(), Box<dyn Error>> {
         table.add_row(row!["Snow (last 1h)", "None"]);
     }
 
-    table.printstd();
-
-    Ok(())
+    table.printstd()
 }
